@@ -40,29 +40,36 @@ class App extends Component {
   }
   decode(beacon) {
     const replacedBeacon = beacon.replace(/&D=/g, "&D||");
-    const aBeacon = replacedBeacon.split("&");
-    //An array of the prefix to be used if found in the beacon. If a key ends with a "."
-    const aPrefixes = [];
-    //Contains the cleanedup key/value pairs
-    const oCleanedVals = {};
-    for (var i = 0; i < aBeacon.length; i++) {
-      const aPairs = aBeacon[i].split(/=(.+)/);
-      const prefixStart = /\w+\.$/gi;
-      const prefixEnd = /^\.\w+/gi;
-      if (aPairs[0] !== "c." && prefixStart.test(aPairs[0])) {
-        aPrefixes.push(aPairs[0]);
-      }
-      if (prefixEnd.test(aPairs[0])) {
-        aPrefixes.pop();
-      }
+    const events = replacedBeacon.split("\n"); // Split by line breaks to handle multiple events
+    const parsedEvents = [];
 
-      if (typeof aPairs[1] != "undefined") {
-        const key = aPrefixes.join("") + aPairs[0];
-        const val = aPairs[1].replace("D||", "D=");
-        oCleanedVals[key] = decodeURIComponent(val);
+    events.forEach((event) => {
+      const aBeacon = event.split("&");
+      const aPrefixes = [];
+      const oCleanedVals = {};
+
+      for (let i = 0; i < aBeacon.length; i++) {
+        const aPairs = aBeacon[i].split(/=(.+)/);
+        const prefixStart = /\w+\.$/gi;
+        const prefixEnd = /^\.\w+/gi;
+
+        if (aPairs[0] !== "c." && prefixStart.test(aPairs[0])) {
+          aPrefixes.push(aPairs[0]);
+        }
+        if (prefixEnd.test(aPairs[0])) {
+          aPrefixes.pop();
+        }
+
+        if (typeof aPairs[1] != "undefined") {
+          const key = aPrefixes.join("") + aPairs[0];
+          const val = aPairs[1].replace("D||", "D=");
+          oCleanedVals[key] = decodeURIComponent(val);
+        }
       }
-    }
-    return oCleanedVals;
+      parsedEvents.push(oCleanedVals);
+    });
+
+    return parsedEvents;
   }
   updateStorage() {
     localStorage.prev_control = JSON.stringify(this.state.prev_control);
