@@ -38,9 +38,31 @@ class App extends Component {
     this.update = this.update.bind(this);
     this.levDistance = this.levDistance.bind(this);
   }
+  convertArrayToObject(array) {
+    const obj = {};
+    let currentKey = '';
+
+    for (let i = 0; i < array.length; i++) {
+        const item = array[i];
+        if (item.startsWith('k')) {
+            currentKey = item.substring(2); // Extract first 2 characters as key
+            obj[currentKey] = ''; // Initialize key with empty string
+        } else if (item.startsWith('v') && currentKey) {
+            // If item starts with 'v' and currentKey is set
+            const value = item.substring(2); // Extract rest of the characters as value (excluding 'v')
+            obj[currentKey] = decodeURIComponent(value); // Assign value to currentKey
+            currentKey = ''; // Reset currentKey
+        } else {
+          const key = array[i].substring(0, 2); // Extract first 2 characters as key
+          const value = array[i].substring(2); // Extract rest of the characters as value
+          obj[key] = decodeURIComponent(value);
+        }
+    }
+    return obj;
+}
   decode(beacon) {
     const replacedBeacon = beacon.replace(/&D=/g, "&D||");
-    const events = replacedBeacon.split("\n"); // Split by line breaks to handle multiple events
+    const events = replacedBeacon.split("\n");
     const parsedEvents = [];
 
     events.forEach((event) => {
@@ -61,9 +83,19 @@ class App extends Component {
         }
 
         if (typeof aPairs[1] != "undefined") {
-          const key = aPrefixes.join("") + aPairs[0];
-          const val = aPairs[1].replace("D||", "D=");
-          oCleanedVals[key] = decodeURIComponent(val);
+          let key = aPrefixes.join("") + aPairs[0];
+          let val = aPairs[1].replace("D||", "D=");
+          console.log("key", key)
+          console.log("val", val)
+          // Check if the key represents nested product data
+          if (key.startsWith("pr") && val.includes("~")) {
+            const nestedParams = val.split("~");
+            console.log("nested prods", nestedParams)
+            oCleanedVals[key] = this.convertArrayToObject(nestedParams);
+          } else {
+            key = key.replace("D||", "D=");
+            oCleanedVals[key] = decodeURIComponent(val);
+          }
         }
       }
       parsedEvents.push(oCleanedVals);
@@ -71,6 +103,7 @@ class App extends Component {
 
     return parsedEvents;
   }
+
   updateStorage() {
     localStorage.prev_control = JSON.stringify(this.state.prev_control);
     localStorage.prev_variant = JSON.stringify(this.state.prev_variant);
